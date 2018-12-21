@@ -1,5 +1,5 @@
 /**
- *    Copyright 2010-2015 the original author or authors.
+ *    Copyright 2010-2018 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -21,46 +21,49 @@ import static org.springframework.util.Assert.notNull;
 import java.util.List;
 
 import org.apache.ibatis.executor.BatchResult;
-import org.apache.ibatis.logging.Log;
-import org.apache.ibatis.logging.LogFactory;
 import org.apache.ibatis.session.ExecutorType;
+import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.logging.Logger;
+import org.mybatis.logging.LoggerFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.InvalidDataAccessResourceUsageException;
 
 /**
  * {@code ItemWriter} that uses the batching features from
  * {@code SqlSessionTemplate} to execute a batch of statements for all items
- * provided.<br/>
- *
- * Provided to facilitate the migration from Spring-Batch iBATIS 2 writers to MyBatis 3<br/>
- *
+ * provided.
+ * <p>
+ * Provided to facilitate the migration from Spring-Batch iBATIS 2 writers to MyBatis 3.
+ * <p>
  * The user must provide a MyBatis statement id that points to the SQL statement defined
- * in the MyBatis.<br/>
- *
+ * in the MyBatis.
+ * <p>
  * It is expected that {@link #write(List)} is called inside a transaction. If it is not
- * each statement call will be autocommitted and flushStatements will return no results.<br/>
- *
+ * each statement call will be autocommitted and flushStatements will return no results.
+ * <p>
  * The writer is thread safe after its properties are set (normal singleton
  * behavior), so it can be used to write in multiple concurrent transactions.
  *
  * @author Eduardo Macarron
  * 
  * @since 1.1.0
- * @version $Id$
  */
 public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBean {
 
-  private static final Log LOGGER = LogFactory.getLog(MyBatisBatchItemWriter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MyBatisBatchItemWriter.class);
 
   private SqlSessionTemplate sqlSessionTemplate;
 
   private String statementId;
 
   private boolean assertUpdates = true;
+
+  private Converter<T, ?> itemToParameterConverter = new PassThroughConverter<>();
 
   /**
    * Public setter for the flag that determines whether an assertion is made
@@ -75,7 +78,7 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
   /**
    * Public setter for {@link SqlSessionFactory} for injection purposes.
    *
-   * @param SqlSessionFactory sqlSessionFactory
+   * @param sqlSessionFactory a factory object for the {@link SqlSession}.
    */
   public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
     if (sqlSessionTemplate == null) {
@@ -86,7 +89,7 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
   /**
    * Public setter for the {@link SqlSessionTemplate}.
    *
-   * @param SqlSessionTemplate the SqlSessionTemplate
+   * @param sqlSessionTemplate a template object for use the {@link SqlSession} on the Spring managed transaction
    */
   public void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
     this.sqlSessionTemplate = sqlSessionTemplate;
@@ -103,6 +106,18 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
   }
 
   /**
+   * Public setter for a converter that converting item to parameter object.
+   * <p>
+   * By default implementation, an item does not convert.
+   *
+   * @param itemToParameterConverter a converter that converting item to parameter object
+   * @since 2.0.0
+   */
+  public void setItemToParameterConverter(Converter<T, ?> itemToParameterConverter) {
+    this.itemToParameterConverter = itemToParameterConverter;
+  }
+
+  /**
    * Check mandatory properties - there must be an SqlSession and a statementId.
    */
   @Override
@@ -110,6 +125,7 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
     notNull(sqlSessionTemplate, "A SqlSessionFactory or a SqlSessionTemplate is required.");
     isTrue(ExecutorType.BATCH == sqlSessionTemplate.getExecutorType(), "SqlSessionTemplate's executor type must be BATCH");
     notNull(statementId, "A statementId is required.");
+    notNull(itemToParameterConverter, "A itemToParameterConverter is required.");
   }
 
   /**
@@ -119,13 +135,10 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
   public void write(final List<? extends T> items) {
 
     if (!items.isEmpty()) {
-
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Executing batch with " + items.size() + " items.");
-      }
+      LOGGER.debug(() -> "Executing batch with " + items.size() + " items.");
 
       for (T item : items) {
-        sqlSessionTemplate.update(statementId, item);
+        sqlSessionTemplate.update(statementId, itemToParameterConverter.convert(item));
       }
 
       List<BatchResult> results = sqlSessionTemplate.flushStatements();
@@ -147,6 +160,15 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
         }
       }
     }
+  }
+
+  private static class PassThroughConverter<T> implements Converter<T, T> {
+
+    @Override
+    public T convert(T source) {
+      return source;
+    }
+
   }
 
 }

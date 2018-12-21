@@ -1,5 +1,5 @@
 /**
- *    Copyright 2010-2015 the original author or authors.
+ *    Copyright 2010-2018 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.util.StringUtils;
 
 /**
@@ -69,12 +68,11 @@ import org.springframework.util.StringUtils;
  * <p>
  * Passing in an actual object which may require placeholders (i.e. DB user password) will fail. 
  * Using bean names defers actual object creation until later in the startup
- * process, after all placeholder substituation is completed. However, note that this configurer
+ * process, after all placeholder substitution is completed. However, note that this configurer
  * does support property placeholders of its <em>own</em> properties. The <code>basePackage</code>
  * and bean name properties all support <code>${property}</code> style substitution.
  * <p>
  * Configuration sample:
- * <p>
  *
  * <pre class="code">
  * {@code
@@ -91,7 +89,6 @@ import org.springframework.util.StringUtils;
  *
  * @see MapperFactoryBean
  * @see ClassPathMapperScanner
- * @version $Id$
  */
 public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProcessor, InitializingBean, ApplicationContextAware, BeanNameAware {
 
@@ -135,7 +132,7 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
   /**
    * Same as {@code MapperFactoryBean#setAddToConfig(boolean)}.
    *
-   * @param addToConfig
+   * @param addToConfig a flag that whether add mapper to MyBatis or not
    * @see MapperFactoryBean#setAddToConfig(boolean)
    */
   public void setAddToConfig(boolean addToConfig) {
@@ -177,7 +174,7 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
    * <p>
    * @deprecated Use {@link #setSqlSessionTemplateBeanName(String)} instead
    *
-   * @param sqlSessionTemplate
+   * @param sqlSessionTemplate a template of SqlSession
    */
   @Deprecated
   public void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
@@ -208,7 +205,7 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
    * <p>
    * @deprecated Use {@link #setSqlSessionFactoryBeanName(String)} instead.
    *
-   * @param sqlSessionFactory
+   * @param sqlSessionFactory a factory of SqlSession
    */
   @Deprecated
   public void setSqlSessionFactory(SqlSessionFactory sqlSessionFactory) {
@@ -233,10 +230,12 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
   }
 
   /**
-   *
+   * Specifies a flag that whether execute a property placeholder processing or not.
+   * <p>
+   * The default is {@literal false}. This means that a property placeholder processing does not execute.
    * @since 1.1.1
    *
-   * @param processPropertyPlaceHolders
+   * @param processPropertyPlaceHolders a flag that whether execute a property placeholder processing or not
    */
   public void setProcessPropertyPlaceHolders(boolean processPropertyPlaceHolders) {
     this.processPropertyPlaceHolders = processPropertyPlaceHolders;
@@ -329,8 +328,8 @@ public class MapperScannerConfigurer implements BeanDefinitionRegistryPostProces
   private void processPropertyPlaceHolders() {
     Map<String, PropertyResourceConfigurer> prcs = applicationContext.getBeansOfType(PropertyResourceConfigurer.class);
 
-    if (!prcs.isEmpty() && applicationContext instanceof GenericApplicationContext) {
-      BeanDefinition mapperScannerBean = ((GenericApplicationContext) applicationContext)
+    if (!prcs.isEmpty() && applicationContext instanceof ConfigurableApplicationContext) {
+      BeanDefinition mapperScannerBean = ((ConfigurableApplicationContext) applicationContext)
           .getBeanFactory().getBeanDefinition(beanName);
 
       // PropertyResourceConfigurer does not expose any methods to explicitly perform

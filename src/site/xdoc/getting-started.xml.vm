@@ -1,22 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright 2010-2012 the original author or authors.
 
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+       Copyright 2010-2017 the original author or authors.
 
-    http://www.apache.org/licenses/LICENSE-2.0
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
 
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
+          http://www.apache.org/licenses/LICENSE-2.0
+
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+
 -->
-
-<!--  version: $Id$ -->
-
 <document xmlns="http://maven.apache.org/XDOC/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://maven.apache.org/XDOC/2.0 http://maven.apache.org/xsd/xdoc-2.0.xsd">
 
@@ -37,9 +36,7 @@
     <subsection name="Installation">
       <p>
         To use the MyBatis-Spring module, you just need to include the
-        <code>
-          mybatis-spring-x.x.x.jar
-        </code>
+        <code>mybatis-spring-${project.version}.jar</code>
         file and its dependencies in the classpath.
       </p>
       <p>
@@ -51,7 +48,7 @@
 <dependency>
   <groupId>org.mybatis</groupId>
   <artifactId>mybatis-spring</artifactId>
-  <version>x.x.x</version>
+  <version>${project.version}</version>
 </dependency>]]></source>
     </subsection>
 
@@ -72,7 +69,7 @@
         create an
         <code>SqlSessionFactory</code>
         . To configure the
-        factory bean, put the following in the Spring XML
+        factory bean, put the following in the Spring
         configuration file:
       </p>
 
@@ -80,6 +77,14 @@
 <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
   <property name="dataSource" ref="dataSource" />
 </bean>]]></source>
+
+      <source><![CDATA[
+@Bean
+public SqlSessionFactoryBean sqlSessionFactory() throws Exception {
+  SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+  factoryBean.setDataSource(dataSource());
+  return factoryBean.getObject();
+}]]></source>
 
       <p>
         Notice that the
@@ -134,19 +139,31 @@
       </p>
 
       <p>
+        If you use the Java Configuration:
+      </p>
+
+      <source><![CDATA[
+@Bean
+public UserMapper userMapper() throws Exception {
+  SqlSessionTemplate sqlSessionTemplate = new SqlSessionTemplate(sqlSessionFactory());
+  return sqlSessionTemplate.getMapper(UserMapper.class);
+}]]></source>
+
+      <p>
         Calling MyBatis data methods is now only one line of code:
       </p>
         <source><![CDATA[
 public class FooServiceImpl implements FooService {
 
-private UserMapper userMapper;
+  private final UserMapper userMapper;
 
-public void setUserMapper(UserMapper userMapper) {
-  this.userMapper = userMapper;
-}
+  public FooServiceImpl(UserMapper userMapper) {
+    this.userMapper = userMapper;
+  }
 
-public User doSomeBusinessStuff(String userId) {
-  return this.userMapper.getUser(userId);
+  public User doSomeBusinessStuff(String userId) {
+    return this.userMapper.getUser(userId);
+  }
 }]]></source>
       </subsection>
     </section>
